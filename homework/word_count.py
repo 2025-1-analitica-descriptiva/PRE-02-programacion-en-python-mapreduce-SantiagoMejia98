@@ -20,15 +20,17 @@ from itertools import groupby
 #
 def copy_raw_files_to_input_folder(n):
     """Funcion copy_files"""
-    if not os.path.exists("files/input"):
-        os.makedirs("files/input")
+    if os.path.exists("files/input"):
+        for file in glob.glob("files/input/*"):
+            os.remove(file)
+        os.rmdir("files/input")
+    os.makedirs("files/input")
         
     for file in glob.glob("files/raw/*"):
         for i in range(1, n + 1):
             with open(file, "r", encoding="utf-8") as f:
                 with open(f"files/input/{os.path.basename(file).split('.')[0]}_{i}.txt", "w", encoding="utf-8") as f2:
                     f2.write(f.read())
-
 
 #
 # Escriba la función load_input que recive como parámetro un folder y retorna
@@ -98,9 +100,7 @@ def mapper(sequence):
 #
 def shuffle_and_sort(sequence):
     """Shuffle and Sort"""
-    sequence.sort(key=lambda x: x[0])
-    return sequence
-
+    return sorted(sequence, key=lambda x: x[0])
 
 #
 # Escriba la función reducer, la cual recibe el resultado de shuffle_and_sort y
@@ -110,6 +110,10 @@ def shuffle_and_sort(sequence):
 #
 def reducer(sequence):
     """Reducer"""
+    result = []
+    for key, group in groupby(sequence, lambda x: x[0]):
+        result.append((key, sum(value for _, value in group)))
+    return result
     
 
 
@@ -117,8 +121,14 @@ def reducer(sequence):
 # Escriba la función create_ouptput_directory que recibe un nombre de
 # directorio y lo crea. Si el directorio existe, lo borra
 #
+
 def create_ouptput_directory(output_directory):
     """Create Output Directory"""
+    if os.path.exists(output_directory):
+        for file in glob.glob(f"{output_directory}/*"):
+            os.remove(file)
+        os.rmdir(output_directory)
+    os.makedirs(output_directory)
 
 
 #
@@ -131,7 +141,9 @@ def create_ouptput_directory(output_directory):
 #
 def save_output(output_directory, sequence):
     """Save Output"""
-
+    with open(f"{output_directory}/part-00000", "w", encoding="utf-8") as f:
+        for key, value in sequence:
+            f.write(f"{key}\t{value}\n")
 
 #
 # La siguiente función crea un archivo llamado _SUCCESS en el directorio
@@ -139,19 +151,23 @@ def save_output(output_directory, sequence):
 #
 def create_marker(output_directory):
     """Create Marker"""
-
+    with open(f"{output_directory}/_SUCCESS", "w", encoding="utf-8") as f:
+        f.write("")
 
 #
 # Escriba la función job, la cual orquesta las funciones anteriores.
 #
-from pprint import pprint
+
 def run_job(input_directory, output_directory):
     """Job"""
     sequence = load_input(input_directory)
     sequence = line_preprocessing(sequence)
     sequence = mapper(sequence)
     sequence = shuffle_and_sort(sequence)
-    pprint(sequence[:5])
+    sequence = reducer(sequence)
+    create_ouptput_directory(output_directory)
+    save_output(output_directory, sequence)
+    create_marker(output_directory)
 
 
 if __name__ == "__main__":
